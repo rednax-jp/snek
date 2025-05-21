@@ -1259,11 +1259,14 @@
             resetButton.textContent = 'Reset';
             gameOverElement.style.display = 'none';
             testResults.style.display = 'none';
-            
-            // Reset game loop with original speed
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            document.querySelector('.timer').style.display = 'none';
+            // Always start the game loop
             clearInterval(gameLoop);
             startGameLoop();
-            
             generateFood();
         }
 
@@ -1742,7 +1745,6 @@
                         button.textContent.split('\n')[0];
                     selector.remove();
                     resetGame();
-                    startGame();
                 });
             });
         }
@@ -1772,67 +1774,6 @@
             document.querySelector('.timer').textContent = 
                 `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
-
-        function startGame() {
-            if (isGameOver) {
-                resetGame();
-                isGameOver = false;
-                gameLoop();
-                startTimer();
-            }
-        }
-
-        function spawnObstacle() {
-            if (currentMode === GAME_MODES.OBSTACLE_COURSE) {
-                // More frequent obstacles in Obstacle Course mode
-                if (Math.random() < 0.2 && obstacles.length < 5) {
-                    const obstacle = {
-                        x: Math.floor(Math.random() * GRID_SIZE),
-                        y: Math.floor(Math.random() * GRID_SIZE),
-                        type: Math.floor(Math.random() * OBSTACLE_TYPES.length)
-                    };
-                    obstacles.push(obstacle);
-                }
-            } else {
-                // Normal obstacle spawning for other modes
-                if (Math.random() < 0.1 && obstacles.length < 3) {
-                    const obstacle = {
-                        x: Math.floor(Math.random() * GRID_SIZE),
-                        y: Math.floor(Math.random() * GRID_SIZE),
-                        type: Math.floor(Math.random() * OBSTACLE_TYPES.length)
-                    };
-                    obstacles.push(obstacle);
-                }
-            }
-        }
-
-        function moveSnake() {
-            // ... existing code ...
-            if (currentMode !== GAME_MODES.ZEN) {
-                if (!activeEffects[POWER_UP_TYPES.GHOST]) {
-                    if (snake[0].x < 0 || snake[0].x >= GRID_SIZE || 
-                        snake[0].y < 0 || snake[0].y >= GRID_SIZE) {
-                        if (!activeEffects[POWER_UP_TYPES.SHIELD]) {
-                            gameOver();
-                            return;
-                        }
-                    }
-                }
-
-                if (!activeEffects[POWER_UP_TYPES.SHIELD]) {
-                    for (let i = 1; i < snake.length; i++) {
-                        if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) {
-                            gameOver();
-                            return;
-                        }
-                    }
-                }
-            }
-            // ... existing code ...
-        }
-
-        // Initialize game with mode selector
-        showModeSelector();
     </script>
     
     <script src="test.js"></script>
