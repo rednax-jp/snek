@@ -241,9 +241,9 @@
         // Game constants
         const GRID_SIZE = 15;
         const CELL_SIZE = 20;
-        let GAME_SPEED = 150; // milliseconds between moves - now variable
-        const SPEED_INCREASE_INTERVAL = 5; // Speed increases every 5 points
-        const COLOR_CHANGE_INTERVAL = 5; // Color changes every 5 points
+        let GAME_SPEED = 200; // Starting slower (was 150)
+        const SPEED_INCREASE_INTERVAL = 3; // Speed increases every 3 points (was 5)
+        const COLOR_CHANGE_INTERVAL = 3; // Color changes every 3 points to match (was 5)
 
         // Game state
         let snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
@@ -537,7 +537,7 @@
             snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
             direction = 'RIGHT';
             score = 0;
-            GAME_SPEED = 150; // Reset speed
+            GAME_SPEED = 200; // Reset to slower starting speed (was 150)
             speedLevel = 1; // Reset speed level
             colorIndex = 1; // Reset color
             scoreElement.textContent = score;
@@ -792,7 +792,7 @@
         function increaseSpeed() {
             // Don't increase past a certain threshold
             if (GAME_SPEED > 50) {
-                GAME_SPEED -= 10;
+                GAME_SPEED -= 5; // Smaller increments (was 10)
                 speedLevel++;
                 
                 // Restart the game loop with new speed
