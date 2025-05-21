@@ -358,12 +358,15 @@
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
         .obstacle-rock {
             background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081552.png');
+            filter: hue-rotate(180deg) brightness(0.8) contrast(1.2);
         }
         .obstacle-spike {
             background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081551.png');
+            filter: hue-rotate(300deg) brightness(0.9) contrast(1.3);
         }
 
         /* Effect icons */
@@ -456,6 +459,17 @@
             height: 100%;
             background: #4CAF50;
             transition: width 0.3s ease-out;
+        }
+
+        /* Add animation for obstacle hit */
+        @keyframes obstacle-hit {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .obstacle-hit {
+            animation: obstacle-hit 0.3s ease-out forwards;
         }
     </style>
 </head>
@@ -692,6 +706,8 @@
             obstacles.forEach(obstacle => {
                 const obstacleElement = document.createElement('div');
                 obstacleElement.className = `obstacle ${OBSTACLE_TYPES[obstacle.type].class}`;
+                obstacleElement.setAttribute('data-x', obstacle.x);
+                obstacleElement.setAttribute('data-y', obstacle.y);
                 obstacleElement.style.width = `${CELL_SIZE}px`;
                 obstacleElement.style.height = `${CELL_SIZE}px`;
                 obstacleElement.style.left = `${obstacle.x * CELL_SIZE}px`;
@@ -835,7 +851,16 @@
                 score = Math.max(0, score - damage); // Prevent negative score
                 scoreElement.textContent = score;
                 
-                // Remove the obstacle
+                // Animate and remove the obstacle
+                const obstacleElement = document.querySelector(`.obstacle[data-x="${hitObstacle.x}"][data-y="${hitObstacle.y}"]`);
+                if (obstacleElement) {
+                    obstacleElement.classList.add('obstacle-hit');
+                    setTimeout(() => {
+                        obstacleElement.remove();
+                    }, 300);
+                }
+                
+                // Remove from obstacles array
                 obstacles = obstacles.filter(obstacle => 
                     obstacle.x !== hitObstacle.x || obstacle.y !== hitObstacle.y
                 );
