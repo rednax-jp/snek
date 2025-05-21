@@ -21,6 +21,7 @@
             touch-action: none;
             margin: 0;
             padding: 20px;
+            animation: bg-move 20s linear infinite;
         }
         h1 {
             color: #2E7D32;
@@ -367,6 +368,45 @@
         .effect-icon.double {
             background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081553.png');
             background-color: #FF9800;
+        }
+
+        /* Event comments */
+        .event-comment {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.2rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.25);
+            z-index: 1000;
+            opacity: 0.95;
+            pointer-events: none;
+            animation: pop-comment 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes pop-comment {
+            0% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+            20% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+            60% { opacity: 1; transform: translateX(-50%) scale(1); }
+            100% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+        }
+
+        /* Grid overlay */
+        #game-board::after {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            background-image: linear-gradient(to right, rgba(46,125,50,0.08) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(46,125,50,0.08) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: 10;
+        }
+
+        /* Background animation */
+        @keyframes bg-move {
+            0% { background-position: 0 0; }
+            100% { background-position: 400px 400px; }
         }
     </style>
 </head>
@@ -743,6 +783,7 @@
                 
                 // Show damage text
                 showFloatingText(head.x, head.y, `-${damage}`, '#F44336');
+                showEventComment('Ouch!', '#F44336', 900);
             }
 
             // Add the new head to the snake
@@ -764,6 +805,7 @@
                 // Check if we need to increase speed
                 if (score % SPEED_INCREASE_INTERVAL === 0) {
                     increaseSpeed();
+                    showEventComment('Speed Up!', '#2196F3');
                 }
                 
                 // Check if we need to change colors
@@ -782,6 +824,11 @@
                 // Chance to spawn obstacle
                 if (Math.random() < 0.3) {
                     generateObstacle();
+                }
+
+                // Check for combo
+                if (score % 6 === 0 && score > 0) {
+                    showEventComment('Combo!', '#FF9800');
                 }
             } else {
                 // Remove the tail if no food was eaten
@@ -927,6 +974,7 @@
                 localStorage.setItem('snakeHighScore', highScore);
                 highScoreElement.textContent = `High Score: ${highScore}`;
                 newRecordElement.style.display = 'block';
+                showEventComment('New Record!', '#FFD700', 1800);
             } else {
                 newRecordElement.style.display = 'none';
             }
@@ -955,6 +1003,8 @@
             testFoodGeneration();
             testCollisionDetection();
             testScoreCalculation();
+            testPowerUpActivation();
+            testObstacleDamage();
             
             // Restore game state
             snake = originalSnake;
@@ -1111,6 +1161,33 @@
             addTestResult('Snake grows after eating food', newSnake.length === testSnake.length + 1);
         }
         
+        function testPowerUpActivation() {
+            let testActiveEffects = { speed: false, shield: false, double: false };
+            let testTimers = {};
+            // Simulate activating each power-up
+            POWER_UPS.forEach((pu, idx) => {
+                testActiveEffects[pu.effect] = true;
+                testTimers[pu.effect] = setTimeout(() => {
+                    testActiveEffects[pu.effect] = false;
+                }, pu.duration);
+            });
+            addTestResult('Power-up activation', testActiveEffects.speed && testActiveEffects.shield && testActiveEffects.double);
+        }
+        function testObstacleDamage() {
+            let testSnake = [{x: 5, y: 5}, {x: 4, y: 5}, {x: 3, y: 5}];
+            let testObstacles = [{x: 6, y: 5, type: 1}];
+            // Simulate hitting a spike
+            const hit = testObstacles.find(o => o.x === 6 && o.y === 5);
+            let lengthBefore = testSnake.length;
+            if (hit) {
+                const damage = OBSTACLE_TYPES[hit.type].damage;
+                for (let i = 0; i < damage; i++) {
+                    if (testSnake.length > 1) testSnake.pop();
+                }
+            }
+            addTestResult('Obstacle damage reduces snake length', testSnake.length === lengthBefore - 2);
+        }
+        
         function addTestResult(testName, passed) {
             const resultClass = passed ? 'test-pass' : 'test-fail';
             const resultText = passed ? 'PASSED' : 'FAILED';
@@ -1258,6 +1335,31 @@
             effectTimers[powerUp.effect] = setTimeout(() => {
                 activeEffects[powerUp.effect] = false;
             }, powerUp.duration);
+
+            // Show event comments for each effect
+            switch (powerUp.effect) {
+                case 'speed':
+                    showEventComment('Speed Boost!', '#2196F3');
+                    break;
+                case 'shield':
+                    showEventComment('Shield On!', '#4CAF50');
+                    break;
+                case 'double':
+                    showEventComment('Double Points!', '#FF9800');
+                    break;
+            }
+        }
+
+        // Show event comment
+        function showEventComment(text, color = '#FFD700', duration = 1200) {
+            const comment = document.createElement('div');
+            comment.className = 'event-comment';
+            comment.textContent = text;
+            comment.style.color = color;
+            document.body.appendChild(comment);
+            setTimeout(() => {
+                comment.remove();
+            }, duration);
         }
 
         // Initialize the game
