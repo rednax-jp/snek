@@ -12,77 +12,106 @@
     <link rel="apple-touch-icon" href="src/assets/icon.png">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             background-color: #f0f0f0;
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
             touch-action: none;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #2E7D32;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
         }
         #game-container {
             margin-top: 20px;
             position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border-radius: 10px;
+            overflow: hidden;
         }
         #game-board {
-            border: 2px solid #000;
-            background-color: #ddd;
+            border: 3px solid #2E7D32;
+            background-color: #E8F5E9;
             position: relative;
+            background-image: url('https://www.transparenttextures.com/patterns/grass.png');
         }
         .cell {
             position: absolute;
-            border: 0.5px solid #ccc;
-            background-color: #fff;
+            border: 0.5px solid rgba(0,0,0,0.1);
+            background-color: rgba(255,255,255,0.1);
         }
         .snake-body {
             position: absolute;
             background-color: #4CAF50;
-            border-radius: 4px;
+            border-radius: 8px;
             z-index: 1;
             transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .snake-head {
             position: absolute;
             background-color: #388E3C;
-            border-radius: 4px;
+            border-radius: 8px;
             z-index: 2;
             transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .food {
             position: absolute;
-            background-color: #F44336;
-            border-radius: 10px;
             z-index: 1;
+            transition: transform 0.2s;
+        }
+        .food:hover {
+            transform: scale(1.1);
         }
         #score-container {
-            margin: 10px 0;
+            margin: 15px 0;
+            background-color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         #score {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
+            color: #2E7D32;
+        }
+        #high-score {
+            font-size: 18px;
+            color: #666;
+            margin-left: 15px;
         }
         #controls {
             margin-top: 30px;
-            width: 180px;
-            height: 180px;
+            width: 200px;
+            height: 200px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 5px;
+            gap: 8px;
         }
         .control-btn {
-            background-color: #e0e0e0;
+            background-color: #E8F5E9;
             border-radius: 30px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             cursor: pointer;
             user-select: none;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            color: #2E7D32;
         }
         .control-btn:active {
-            background-color: #bdbdbd;
+            background-color: #C8E6C9;
+            transform: scale(0.95);
         }
         .placeholder {
             visibility: hidden;
@@ -90,15 +119,24 @@
         #buttons {
             display: flex;
             margin-top: 20px;
+            gap: 15px;
         }
         .button {
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 24px;
+            border-radius: 25px;
             border: none;
             color: white;
             font-weight: bold;
             cursor: pointer;
-            margin: 0 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        .button:active {
+            transform: translateY(0);
         }
         #pause-btn {
             background-color: #4CAF50;
@@ -115,7 +153,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.8);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -123,13 +161,27 @@
             color: white;
             font-weight: bold;
             display: none;
+            backdrop-filter: blur(5px);
         }
         #game-over-text {
-            font-size: 40px;
+            font-size: 48px;
             margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         #final-score {
-            font-size: 28px;
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        #new-record {
+            font-size: 24px;
+            color: #FFD700;
+            margin-bottom: 20px;
+            display: none;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
         #install-container {
             margin-top: 20px;
@@ -137,24 +189,31 @@
         }
         #install-btn {
             background-color: #2196F3;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 24px;
+            border-radius: 25px;
             border: none;
             color: white;
             font-weight: bold;
             cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        #install-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
         }
         #test-results {
             margin-top: 20px;
-            padding: 10px;
+            padding: 15px;
             border: 1px solid #ccc;
-            border-radius: 5px;
+            border-radius: 10px;
             width: 80%;
             max-width: 600px;
-            background-color: #fff;
+            background-color: white;
             display: none;
             max-height: 300px;
             overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .test-pass {
             color: #4CAF50;
@@ -189,11 +248,65 @@
             animation: blink 0.3s linear 3;
         }
 
-        /* Cherry style */
-        .cherry {
-            position: relative;
-            width: 100%;
-            height: 100%;
+        /* Food styles */
+        .food-apple {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/415/415682.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .food-cherry {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081559.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .food-banana {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081557.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .food-strawberry {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081558.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .food-grape {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081556.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        /* Floating text animation */
+        @keyframes float-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        .floating-text {
+            position: absolute;
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Level indicator */
+        #level-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255,255,255,0.9);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            color: #2E7D32;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -202,13 +315,16 @@
     
     <div id="score-container">
         <span>Score: </span><span id="score">0</span>
+        <span id="high-score">High Score: 0</span>
     </div>
     
     <div id="game-container">
-        <canvas id="game-board" width="300" height="300"></canvas>
+        <canvas id="game-board" width="400" height="400"></canvas>
+        <div id="level-indicator">Level: 1</div>
         
         <div id="game-over">
             <div id="game-over-text">Game Over!</div>
+            <div id="new-record">New High Score!</div>
             <div id="final-score">Final Score: 0</div>
         </div>
     </div>
@@ -239,32 +355,43 @@
     
     <script>
         // Game constants
-        const GRID_SIZE = 15;
+        const GRID_SIZE = 20;
         const CELL_SIZE = 20;
-        let GAME_SPEED = 200; // Starting slower (was 150)
-        const SPEED_INCREASE_INTERVAL = 3; // Speed increases every 3 points (was 5)
-        const COLOR_CHANGE_INTERVAL = 3; // Color changes every 3 points to match (was 5)
+        let GAME_SPEED = 200;
+        const SPEED_INCREASE_INTERVAL = 3;
+        const COLOR_CHANGE_INTERVAL = 3;
+        const FOOD_TYPES = [
+            { class: 'food-apple', points: 1 },
+            { class: 'food-cherry', points: 2 },
+            { class: 'food-banana', points: 3 },
+            { class: 'food-strawberry', points: 4 },
+            { class: 'food-grape', points: 5 }
+        ];
 
         // Game state
         let snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
-        let food = { x: 5, y: 5 };
+        let food = { x: 5, y: 5, type: 0 };
         let direction = 'RIGHT';
         let isGameOver = false;
         let score = 0;
+        let highScore = localStorage.getItem('snakeHighScore') || 0;
         let isPaused = false;
         let gameLoop;
-        let colorIndex = 1; // Current color scheme (1-5)
-        let speedLevel = 1; // Current speed level
+        let colorIndex = 1;
+        let speedLevel = 1;
 
         // DOM elements
         const gameBoard = document.getElementById('game-board');
         const ctx = gameBoard.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('high-score');
+        const levelIndicator = document.getElementById('level-indicator');
         const pauseButton = document.getElementById('pause-btn');
         const resetButton = document.getElementById('reset-btn');
         const testButton = document.getElementById('test-btn');
         const gameOverElement = document.getElementById('game-over');
         const finalScoreElement = document.getElementById('final-score');
+        const newRecordElement = document.getElementById('new-record');
         const installContainer = document.getElementById('install-container');
         const installButton = document.getElementById('install-btn');
         const testResults = document.getElementById('test-results');
@@ -272,6 +399,9 @@
         // Set up the game board size
         gameBoard.width = GRID_SIZE * CELL_SIZE;
         gameBoard.height = GRID_SIZE * CELL_SIZE;
+
+        // Update high score display
+        highScoreElement.textContent = `High Score: ${highScore}`;
 
         // Initialize the game
         function init() {
@@ -349,32 +479,26 @@
                 }
             }
 
-            // Draw food (cherry)
-            const cherryX = food.x * CELL_SIZE + CELL_SIZE / 2;
-            const cherryY = food.y * CELL_SIZE + CELL_SIZE / 2;
+            // Draw food
+            const foodX = food.x * CELL_SIZE;
+            const foodY = food.y * CELL_SIZE;
             
-            // Draw cherry
-            const radius = (CELL_SIZE / 2) - 2;
+            // Create a div for the food
+            const foodElement = document.createElement('div');
+            foodElement.className = `food ${FOOD_TYPES[food.type].class}`;
+            foodElement.style.width = `${CELL_SIZE}px`;
+            foodElement.style.height = `${CELL_SIZE}px`;
+            foodElement.style.left = `${foodX}px`;
+            foodElement.style.top = `${foodY}px`;
             
-            // Cherry body (main circle)
-            ctx.fillStyle = '#e53935'; // Dark red
-            ctx.beginPath();
-            ctx.arc(cherryX - 2, cherryY + 2, radius, 0, 2 * Math.PI);
-            ctx.fill();
+            // Remove any existing food elements
+            const existingFood = document.querySelector('.food');
+            if (existingFood) {
+                existingFood.remove();
+            }
             
-            // Cherry highlight
-            ctx.fillStyle = '#ff6e6e'; // Light red
-            ctx.beginPath();
-            ctx.arc(cherryX - 4, cherryY - 1, radius / 3, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Cherry stem
-            ctx.strokeStyle = '#4CAF50';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(cherryX, cherryY - radius + 2);
-            ctx.quadraticCurveTo(cherryX + 5, cherryY - radius - 5, cherryX + 8, cherryY - radius - 8);
-            ctx.stroke();
+            // Add the new food element
+            gameBoard.parentElement.appendChild(foodElement);
 
             // Draw snake with current color scheme
             snake.forEach((segment, index) => {
@@ -441,9 +565,13 @@
 
             // Check if snake ate food
             if (head.x === food.x && head.y === food.y) {
-                // Increase score
-                score++;
+                // Increase score based on food type
+                const points = FOOD_TYPES[food.type].points;
+                score += points;
                 scoreElement.textContent = score;
+                
+                // Show floating text with points
+                showFloatingText(head.x, head.y, `+${points}`);
                 
                 // Check if we need to increase speed
                 if (score % SPEED_INCREASE_INTERVAL === 0) {
@@ -463,6 +591,22 @@
             }
         }
 
+        // Show floating text
+        function showFloatingText(x, y, text) {
+            const floatingText = document.createElement('div');
+            floatingText.className = 'floating-text';
+            floatingText.textContent = text;
+            floatingText.style.left = `${x * CELL_SIZE + CELL_SIZE / 2}px`;
+            floatingText.style.top = `${y * CELL_SIZE}px`;
+            
+            gameBoard.parentElement.appendChild(floatingText);
+            
+            // Remove the element after animation completes
+            setTimeout(() => {
+                floatingText.remove();
+            }, 1000);
+        }
+
         // Generate random food position
         function generateFood() {
             let newFood;
@@ -471,7 +615,8 @@
             do {
                 newFood = {
                     x: Math.floor(Math.random() * GRID_SIZE),
-                    y: Math.floor(Math.random() * GRID_SIZE)
+                    y: Math.floor(Math.random() * GRID_SIZE),
+                    type: Math.floor(Math.random() * FOOD_TYPES.length)
                 };
 
                 isOnSnake = snake.some(
@@ -537,10 +682,11 @@
             snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
             direction = 'RIGHT';
             score = 0;
-            GAME_SPEED = 200; // Reset to slower starting speed (was 150)
-            speedLevel = 1; // Reset speed level
-            colorIndex = 1; // Reset color
+            GAME_SPEED = 200;
+            speedLevel = 1;
+            colorIndex = 1;
             scoreElement.textContent = score;
+            levelIndicator.textContent = `Level: ${speedLevel}`;
             isGameOver = false;
             isPaused = false;
             pauseButton.textContent = 'Pause';
@@ -561,6 +707,16 @@
             finalScoreElement.textContent = `Final Score: ${score}`;
             gameOverElement.style.display = 'flex';
             resetButton.textContent = 'Play Again';
+            
+            // Check for new high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('snakeHighScore', highScore);
+                highScoreElement.textContent = `High Score: ${highScore}`;
+                newRecordElement.style.display = 'block';
+            } else {
+                newRecordElement.style.display = 'none';
+            }
         }
 
         // Run tests
@@ -667,7 +823,8 @@
             do {
                 testFood = {
                     x: Math.floor(Math.random() * GRID_SIZE),
-                    y: Math.floor(Math.random() * GRID_SIZE)
+                    y: Math.floor(Math.random() * GRID_SIZE),
+                    type: Math.floor(Math.random() * FOOD_TYPES.length)
                 };
                 
                 isOnSnake = testSnake.some(
@@ -725,14 +882,14 @@
             // Test eating food increases score
             let testScore = 0;
             const testSnake = [{ x: 5, y: 5 }];
-            const testFood = { x: 6, y: 5 };
+            const testFood = { x: 6, y: 5, type: 0 };
             
             // Simulate snake eating food
             if (testSnake[0].x + 1 === testFood.x && testSnake[0].y === testFood.y) {
-                testScore++;
+                testScore += FOOD_TYPES[testFood.type].points;
             }
             
-            addTestResult('Score increases when eating food', testScore === 1);
+            addTestResult('Score increases when eating food', testScore === FOOD_TYPES[0].points);
             
             // Test snake grows when eating food
             const newHead = { x: testFood.x, y: testFood.y };
@@ -792,8 +949,9 @@
         function increaseSpeed() {
             // Don't increase past a certain threshold
             if (GAME_SPEED > 50) {
-                GAME_SPEED -= 5; // Smaller increments (was 10)
+                GAME_SPEED -= 5;
                 speedLevel++;
+                levelIndicator.textContent = `Level: ${speedLevel}`;
                 
                 // Restart the game loop with new speed
                 clearInterval(gameLoop);
