@@ -38,12 +38,14 @@
             background-color: #4CAF50;
             border-radius: 4px;
             z-index: 1;
+            transition: background-color 0.3s;
         }
         .snake-head {
             position: absolute;
             background-color: #388E3C;
             border-radius: 4px;
             z-index: 2;
+            transition: background-color 0.3s;
         }
         .food {
             position: absolute;
@@ -160,6 +162,39 @@
         .test-fail {
             color: #F44336;
         }
+        /* Snake color variations */
+        .snake-color-1 .snake-body { background-color: #4CAF50; }
+        .snake-color-1 .snake-head { background-color: #388E3C; }
+
+        .snake-color-2 .snake-body { background-color: #2196F3; }
+        .snake-color-2 .snake-head { background-color: #1976D2; }
+
+        .snake-color-3 .snake-body { background-color: #9C27B0; }
+        .snake-color-3 .snake-head { background-color: #7B1FA2; }
+
+        .snake-color-4 .snake-body { background-color: #FF9800; }
+        .snake-color-4 .snake-head { background-color: #F57C00; }
+
+        .snake-color-5 .snake-body { background-color: #F44336; }
+        .snake-color-5 .snake-head { background-color: #D32F2F; }
+
+        /* Blinking animation */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .blink {
+            animation: blink 0.3s linear 3;
+        }
+
+        /* Cherry style */
+        .cherry {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -206,7 +241,9 @@
         // Game constants
         const GRID_SIZE = 15;
         const CELL_SIZE = 20;
-        const GAME_SPEED = 150; // milliseconds
+        let GAME_SPEED = 150; // milliseconds between moves - now variable
+        const SPEED_INCREASE_INTERVAL = 5; // Speed increases every 5 points
+        const COLOR_CHANGE_INTERVAL = 5; // Color changes every 5 points
 
         // Game state
         let snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
@@ -216,6 +253,8 @@
         let score = 0;
         let isPaused = false;
         let gameLoop;
+        let colorIndex = 1; // Current color scheme (1-5)
+        let speedLevel = 1; // Current speed level
 
         // DOM elements
         const gameBoard = document.getElementById('game-board');
@@ -310,21 +349,40 @@
                 }
             }
 
-            // Draw food
-            ctx.fillStyle = '#F44336';
+            // Draw food (cherry)
+            const cherryX = food.x * CELL_SIZE + CELL_SIZE / 2;
+            const cherryY = food.y * CELL_SIZE + CELL_SIZE / 2;
+            
+            // Draw cherry
+            const radius = (CELL_SIZE / 2) - 2;
+            
+            // Cherry body (main circle)
+            ctx.fillStyle = '#e53935'; // Dark red
             ctx.beginPath();
-            ctx.arc(
-                food.x * CELL_SIZE + CELL_SIZE / 2,
-                food.y * CELL_SIZE + CELL_SIZE / 2,
-                CELL_SIZE / 2 - 2,
-                0,
-                2 * Math.PI
-            );
+            ctx.arc(cherryX - 2, cherryY + 2, radius, 0, 2 * Math.PI);
             ctx.fill();
+            
+            // Cherry highlight
+            ctx.fillStyle = '#ff6e6e'; // Light red
+            ctx.beginPath();
+            ctx.arc(cherryX - 4, cherryY - 1, radius / 3, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Cherry stem
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(cherryX, cherryY - radius + 2);
+            ctx.quadraticCurveTo(cherryX + 5, cherryY - radius - 5, cherryX + 8, cherryY - radius - 8);
+            ctx.stroke();
 
-            // Draw snake
+            // Draw snake with current color scheme
             snake.forEach((segment, index) => {
-                ctx.fillStyle = index === 0 ? '#388E3C' : '#4CAF50';
+                // Apply the current color scheme based on colorIndex
+                ctx.fillStyle = index === 0 ? 
+                    getSnakeHeadColor(colorIndex) : 
+                    getSnakeBodyColor(colorIndex);
+                    
                 ctx.fillRect(
                     segment.x * CELL_SIZE + 1,
                     segment.y * CELL_SIZE + 1,
@@ -332,6 +390,17 @@
                     CELL_SIZE - 2
                 );
             });
+        }
+
+        // Helper functions for getting colors
+        function getSnakeBodyColor(index) {
+            const colors = ['#4CAF50', '#2196F3', '#9C27B0', '#FF9800', '#F44336'];
+            return colors[(index - 1) % colors.length];
+        }
+
+        function getSnakeHeadColor(index) {
+            const colors = ['#388E3C', '#1976D2', '#7B1FA2', '#F57C00', '#D32F2F'];
+            return colors[(index - 1) % colors.length];
         }
 
         // Move the snake
@@ -375,6 +444,16 @@
                 // Increase score
                 score++;
                 scoreElement.textContent = score;
+                
+                // Check if we need to increase speed
+                if (score % SPEED_INCREASE_INTERVAL === 0) {
+                    increaseSpeed();
+                }
+                
+                // Check if we need to change colors
+                if (score % COLOR_CHANGE_INTERVAL === 0) {
+                    changeSnakeColor();
+                }
 
                 // Generate new food
                 generateFood();
@@ -458,6 +537,9 @@
             snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
             direction = 'RIGHT';
             score = 0;
+            GAME_SPEED = 150; // Reset speed
+            speedLevel = 1; // Reset speed level
+            colorIndex = 1; // Reset color
             scoreElement.textContent = score;
             isGameOver = false;
             isPaused = false;
@@ -465,6 +547,11 @@
             resetButton.textContent = 'Reset';
             gameOverElement.style.display = 'none';
             testResults.style.display = 'none';
+            
+            // Reset game loop with original speed
+            clearInterval(gameLoop);
+            startGameLoop();
+            
             generateFood();
         }
 
@@ -699,6 +786,32 @@
                         console.log('Service Worker registration failed:', error);
                     });
             });
+        }
+
+        // Function to increase game speed
+        function increaseSpeed() {
+            // Don't increase past a certain threshold
+            if (GAME_SPEED > 50) {
+                GAME_SPEED -= 10;
+                speedLevel++;
+                
+                // Restart the game loop with new speed
+                clearInterval(gameLoop);
+                startGameLoop();
+                
+                // Apply blinking effect to the game board
+                gameBoard.classList.add('blink');
+                
+                // Remove the blink class after animation completes
+                setTimeout(() => {
+                    gameBoard.classList.remove('blink');
+                }, 1000);
+            }
+        }
+
+        // Function to change snake color
+        function changeSnakeColor() {
+            colorIndex = colorIndex % 5 + 1;
         }
 
         // Initialize the game
