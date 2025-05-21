@@ -830,13 +830,10 @@
             );
 
             if (hitObstacle && !activeEffects.shield) {
-                // Reduce snake length based on obstacle damage
+                // Deduct points based on obstacle damage
                 const damage = OBSTACLE_TYPES[hitObstacle.type].damage;
-                for (let i = 0; i < damage; i++) {
-                    if (snake.length > 1) {
-                        snake.pop();
-                    }
-                }
+                score = Math.max(0, score - damage); // Prevent negative score
+                scoreElement.textContent = score;
                 
                 // Remove the obstacle
                 obstacles = obstacles.filter(obstacle => 
@@ -846,6 +843,12 @@
                 // Show damage text
                 showFloatingText(head.x, head.y, `-${damage}`, '#F44336');
                 showEventComment('Ouch!', '#F44336', 900);
+                
+                // If score becomes 0, game over
+                if (score === 0) {
+                    gameOver();
+                    return;
+                }
             }
 
             // Add the new head to the snake
@@ -1238,18 +1241,15 @@
             addTestResult('Power-up activation', testActiveEffects.speed && testActiveEffects.shield && testActiveEffects.double);
         }
         function testObstacleDamage() {
-            let testSnake = [{x: 5, y: 5}, {x: 4, y: 5}, {x: 3, y: 5}];
-            let testObstacles = [{x: 6, y: 5, type: 1}];
+            let testScore = 10;
+            let testObstacles = [{x: 6, y: 5, type: 1}]; // Spike obstacle
             // Simulate hitting a spike
             const hit = testObstacles.find(o => o.x === 6 && o.y === 5);
-            let lengthBefore = testSnake.length;
             if (hit) {
                 const damage = OBSTACLE_TYPES[hit.type].damage;
-                for (let i = 0; i < damage; i++) {
-                    if (testSnake.length > 1) testSnake.pop();
-                }
+                testScore = Math.max(0, testScore - damage);
             }
-            addTestResult('Obstacle damage reduces snake length', testSnake.length === lengthBefore - 2);
+            addTestResult('Obstacle damage reduces score', testScore === 8);
         }
         
         function addTestResult(testName, passed) {
