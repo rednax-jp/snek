@@ -562,6 +562,65 @@
             50% { transform: translateX(-50%) scale(1.2); }
             100% { transform: translateX(-50%) scale(1); }
         }
+
+        .mode-selector {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 300px;
+        }
+
+        .mode-button {
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(45deg, #2196F3, #4CAF50);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+        }
+
+        .mode-description {
+            color: #ccc;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .timer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+            z-index: 3;
+        }
+
+        .mode-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 16px;
+            z-index: 3;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 15px;
+            border-radius: 15px;
+        }
     </style>
 </head>
 <body>
@@ -617,6 +676,9 @@
     <div class="combo-indicator">Combo x1</div>
     
     <div class="power-up-indicator"></div>
+    
+    <div class="mode-indicator">Classic Mode</div>
+    <div class="timer" style="display: none;">2:00</div>
     
     <script>
         // Game constants
@@ -1618,6 +1680,140 @@
                 return true;
             });
         }
+
+        const GAME_MODES = {
+            CLASSIC: 'classic',
+            TIME_ATTACK: 'timeAttack',
+            OBSTACLE_COURSE: 'obstacleCourse',
+            ZEN: 'zen'
+        };
+
+        let currentMode = GAME_MODES.CLASSIC;
+        let timeRemaining = 120; // 2 minutes in seconds
+        let timerInterval = null;
+
+        function showModeSelector() {
+            const selector = document.createElement('div');
+            selector.className = 'mode-selector';
+            selector.innerHTML = `
+                <button class="mode-button" data-mode="${GAME_MODES.CLASSIC}">
+                    Classic Mode
+                    <div class="mode-description">Traditional snake gameplay</div>
+                </button>
+                <button class="mode-button" data-mode="${GAME_MODES.TIME_ATTACK}">
+                    Time Attack
+                    <div class="mode-description">Score as many points as possible in 2 minutes</div>
+                </button>
+                <button class="mode-button" data-mode="${GAME_MODES.OBSTACLE_COURSE}">
+                    Obstacle Course
+                    <div class="mode-description">Navigate through more obstacles for higher rewards</div>
+                </button>
+                <button class="mode-button" data-mode="${GAME_MODES.ZEN}">
+                    Zen Mode
+                    <div class="mode-description">No game over, focus on high score</div>
+                </button>
+            `;
+
+            document.body.appendChild(selector);
+
+            selector.querySelectorAll('.mode-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    currentMode = button.dataset.mode;
+                    document.querySelector('.mode-indicator').textContent = 
+                        button.textContent.split('\n')[0];
+                    selector.remove();
+                    resetGame();
+                    startGame();
+                });
+            });
+        }
+
+        function startTimer() {
+            if (currentMode === GAME_MODES.TIME_ATTACK) {
+                const timerElement = document.querySelector('.timer');
+                timerElement.style.display = 'block';
+                timeRemaining = 120;
+                updateTimerDisplay();
+
+                timerInterval = setInterval(() => {
+                    timeRemaining--;
+                    updateTimerDisplay();
+
+                    if (timeRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        gameOver();
+                    }
+                }, 1000);
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.querySelector('.timer').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function startGame() {
+            if (isGameOver) {
+                resetGame();
+                isGameOver = false;
+                gameLoop();
+                startTimer();
+            }
+        }
+
+        function spawnObstacle() {
+            if (currentMode === GAME_MODES.OBSTACLE_COURSE) {
+                // More frequent obstacles in Obstacle Course mode
+                if (Math.random() < 0.2 && obstacles.length < 5) {
+                    const obstacle = {
+                        x: Math.floor(Math.random() * GRID_SIZE),
+                        y: Math.floor(Math.random() * GRID_SIZE),
+                        type: Math.floor(Math.random() * OBSTACLE_TYPES.length)
+                    };
+                    obstacles.push(obstacle);
+                }
+            } else {
+                // Normal obstacle spawning for other modes
+                if (Math.random() < 0.1 && obstacles.length < 3) {
+                    const obstacle = {
+                        x: Math.floor(Math.random() * GRID_SIZE),
+                        y: Math.floor(Math.random() * GRID_SIZE),
+                        type: Math.floor(Math.random() * OBSTACLE_TYPES.length)
+                    };
+                    obstacles.push(obstacle);
+                }
+            }
+        }
+
+        function moveSnake() {
+            // ... existing code ...
+            if (currentMode !== GAME_MODES.ZEN) {
+                if (!activeEffects[POWER_UP_TYPES.GHOST]) {
+                    if (snake[0].x < 0 || snake[0].x >= GRID_SIZE || 
+                        snake[0].y < 0 || snake[0].y >= GRID_SIZE) {
+                        if (!activeEffects[POWER_UP_TYPES.SHIELD]) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+
+                if (!activeEffects[POWER_UP_TYPES.SHIELD]) {
+                    for (let i = 1; i < snake.length; i++) {
+                        if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+            // ... existing code ...
+        }
+
+        // Initialize game with mode selector
+        showModeSelector();
     </script>
     
     <script src="test.js"></script>
