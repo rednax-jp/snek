@@ -308,6 +308,66 @@
             color: #2E7D32;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
+        /* Power-up styles */
+        .power-up {
+            position: absolute;
+            z-index: 1;
+            transition: transform 0.2s;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .power-up:hover {
+            transform: scale(1.1);
+        }
+        .power-up-speed {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081555.png');
+        }
+        .power-up-shield {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081554.png');
+        }
+        .power-up-double {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081553.png');
+        }
+
+        /* Obstacle styles */
+        .obstacle {
+            position: absolute;
+            z-index: 1;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .obstacle-rock {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081552.png');
+        }
+        .obstacle-spike {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081551.png');
+        }
+
+        /* Effect icons */
+        .effect-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .effect-icon.speed {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081555.png');
+            background-color: #2196F3;
+        }
+        .effect-icon.shield {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081554.png');
+            background-color: #4CAF50;
+        }
+        .effect-icon.double {
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081553.png');
+            background-color: #FF9800;
+        }
     </style>
 </head>
 <body>
@@ -367,10 +427,21 @@
             { class: 'food-strawberry', points: 4 },
             { class: 'food-grape', points: 5 }
         ];
+        const POWER_UPS = [
+            { class: 'power-up-speed', effect: 'speed', duration: 5000 },
+            { class: 'power-up-shield', effect: 'shield', duration: 8000 },
+            { class: 'power-up-double', effect: 'double', duration: 10000 }
+        ];
+        const OBSTACLE_TYPES = [
+            { class: 'obstacle-rock', damage: 1 },
+            { class: 'obstacle-spike', damage: 2 }
+        ];
 
         // Game state
         let snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
         let food = { x: 5, y: 5, type: 0 };
+        let powerUp = null;
+        let obstacles = [];
         let direction = 'RIGHT';
         let isGameOver = false;
         let score = 0;
@@ -379,6 +450,12 @@
         let gameLoop;
         let colorIndex = 1;
         let speedLevel = 1;
+        let activeEffects = {
+            speed: false,
+            shield: false,
+            double: false
+        };
+        let effectTimers = {};
 
         // DOM elements
         const gameBoard = document.getElementById('game-board');
@@ -479,6 +556,30 @@
                 }
             }
 
+            // Draw obstacles
+            obstacles.forEach(obstacle => {
+                const obstacleElement = document.createElement('div');
+                obstacleElement.className = `obstacle ${OBSTACLE_TYPES[obstacle.type].class}`;
+                obstacleElement.style.width = `${CELL_SIZE}px`;
+                obstacleElement.style.height = `${CELL_SIZE}px`;
+                obstacleElement.style.left = `${obstacle.x * CELL_SIZE}px`;
+                obstacleElement.style.top = `${obstacle.y * CELL_SIZE}px`;
+                
+                gameBoard.parentElement.appendChild(obstacleElement);
+            });
+
+            // Draw power-up if exists
+            if (powerUp) {
+                const powerUpElement = document.createElement('div');
+                powerUpElement.className = `power-up ${POWER_UPS[powerUp.type].class}`;
+                powerUpElement.style.width = `${CELL_SIZE}px`;
+                powerUpElement.style.height = `${CELL_SIZE}px`;
+                powerUpElement.style.left = `${powerUp.x * CELL_SIZE}px`;
+                powerUpElement.style.top = `${powerUp.y * CELL_SIZE}px`;
+                
+                gameBoard.parentElement.appendChild(powerUpElement);
+            }
+
             // Draw food
             const foodX = food.x * CELL_SIZE;
             const foodY = food.y * CELL_SIZE;
@@ -513,7 +614,68 @@
                     CELL_SIZE - 2,
                     CELL_SIZE - 2
                 );
+
+                // Draw shield effect if active
+                if (activeEffects.shield && index === 0) {
+                    ctx.strokeStyle = '#2196F3';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(
+                        segment.x * CELL_SIZE + CELL_SIZE / 2,
+                        segment.y * CELL_SIZE + CELL_SIZE / 2,
+                        CELL_SIZE / 2 + 2,
+                        0,
+                        2 * Math.PI
+                    );
+                    ctx.stroke();
+                }
             });
+
+            // Draw active effects
+            drawActiveEffects();
+        }
+
+        // Draw active effects
+        function drawActiveEffects() {
+            const effectsContainer = document.createElement('div');
+            effectsContainer.className = 'active-effects';
+            effectsContainer.style.position = 'absolute';
+            effectsContainer.style.top = '10px';
+            effectsContainer.style.left = '10px';
+            effectsContainer.style.display = 'flex';
+            effectsContainer.style.gap = '10px';
+
+            if (activeEffects.speed) {
+                const speedEffect = document.createElement('div');
+                speedEffect.className = 'effect-icon speed';
+                speedEffect.title = 'Speed Boost';
+                effectsContainer.appendChild(speedEffect);
+            }
+
+            if (activeEffects.shield) {
+                const shieldEffect = document.createElement('div');
+                shieldEffect.className = 'effect-icon shield';
+                shieldEffect.title = 'Shield Active';
+                effectsContainer.appendChild(shieldEffect);
+            }
+
+            if (activeEffects.double) {
+                const doubleEffect = document.createElement('div');
+                doubleEffect.className = 'effect-icon double';
+                doubleEffect.title = 'Double Points';
+                effectsContainer.appendChild(doubleEffect);
+            }
+
+            // Remove existing effects container
+            const existingEffects = document.querySelector('.active-effects');
+            if (existingEffects) {
+                existingEffects.remove();
+            }
+
+            // Add new effects container
+            if (effectsContainer.children.length > 0) {
+                gameBoard.parentElement.appendChild(effectsContainer);
+            }
         }
 
         // Helper functions for getting colors
@@ -554,10 +716,33 @@
                 head.x >= GRID_SIZE ||
                 head.y < 0 ||
                 head.y >= GRID_SIZE ||
-                snake.some(segment => segment.x === head.x && segment.y === head.y)
+                (!activeEffects.shield && snake.some(segment => segment.x === head.x && segment.y === head.y))
             ) {
                 gameOver();
                 return;
+            }
+
+            // Check for obstacle collisions
+            const hitObstacle = obstacles.find(obstacle => 
+                obstacle.x === head.x && obstacle.y === head.y
+            );
+
+            if (hitObstacle && !activeEffects.shield) {
+                // Reduce snake length based on obstacle damage
+                const damage = OBSTACLE_TYPES[hitObstacle.type].damage;
+                for (let i = 0; i < damage; i++) {
+                    if (snake.length > 1) {
+                        snake.pop();
+                    }
+                }
+                
+                // Remove the obstacle
+                obstacles = obstacles.filter(obstacle => 
+                    obstacle.x !== hitObstacle.x || obstacle.y !== hitObstacle.y
+                );
+                
+                // Show damage text
+                showFloatingText(head.x, head.y, `-${damage}`, '#F44336');
             }
 
             // Add the new head to the snake
@@ -565,8 +750,11 @@
 
             // Check if snake ate food
             if (head.x === food.x && head.y === food.y) {
-                // Increase score based on food type
-                const points = FOOD_TYPES[food.type].points;
+                // Increase score based on food type and active effects
+                let points = FOOD_TYPES[food.type].points;
+                if (activeEffects.double) {
+                    points *= 2;
+                }
                 score += points;
                 scoreElement.textContent = score;
                 
@@ -585,19 +773,36 @@
 
                 // Generate new food
                 generateFood();
+                
+                // Chance to spawn power-up
+                if (Math.random() < 0.2) {
+                    generatePowerUp();
+                }
+                
+                // Chance to spawn obstacle
+                if (Math.random() < 0.3) {
+                    generateObstacle();
+                }
             } else {
                 // Remove the tail if no food was eaten
                 snake.pop();
             }
+
+            // Check if snake ate power-up
+            if (powerUp && head.x === powerUp.x && head.y === powerUp.y) {
+                activatePowerUp(powerUp.type);
+                powerUp = null;
+            }
         }
 
         // Show floating text
-        function showFloatingText(x, y, text) {
+        function showFloatingText(x, y, text, color = '#4CAF50') {
             const floatingText = document.createElement('div');
             floatingText.className = 'floating-text';
             floatingText.textContent = text;
             floatingText.style.left = `${x * CELL_SIZE + CELL_SIZE / 2}px`;
             floatingText.style.top = `${y * CELL_SIZE}px`;
+            floatingText.style.color = color;
             
             gameBoard.parentElement.appendChild(floatingText);
             
@@ -685,6 +890,14 @@
             GAME_SPEED = 200;
             speedLevel = 1;
             colorIndex = 1;
+            powerUp = null;
+            obstacles = [];
+            activeEffects = {
+                speed: false,
+                shield: false,
+                double: false
+            };
+            effectTimers = {};
             scoreElement.textContent = score;
             levelIndicator.textContent = `Level: ${speedLevel}`;
             isGameOver = false;
@@ -970,6 +1183,81 @@
         // Function to change snake color
         function changeSnakeColor() {
             colorIndex = colorIndex % 5 + 1;
+        }
+
+        // Generate power-up
+        function generatePowerUp() {
+            let newPowerUp;
+            let isOnSnake;
+            let isOnFood;
+            let isOnObstacle;
+
+            do {
+                newPowerUp = {
+                    x: Math.floor(Math.random() * GRID_SIZE),
+                    y: Math.floor(Math.random() * GRID_SIZE),
+                    type: Math.floor(Math.random() * POWER_UPS.length)
+                };
+
+                isOnSnake = snake.some(
+                    segment => segment.x === newPowerUp.x && segment.y === newPowerUp.y
+                );
+                
+                isOnFood = newPowerUp.x === food.x && newPowerUp.y === food.y;
+                
+                isOnObstacle = obstacles.some(
+                    obstacle => obstacle.x === newPowerUp.x && obstacle.y === newPowerUp.y
+                );
+            } while (isOnSnake || isOnFood || isOnObstacle);
+
+            powerUp = newPowerUp;
+        }
+
+        // Generate obstacle
+        function generateObstacle() {
+            let newObstacle;
+            let isOnSnake;
+            let isOnFood;
+            let isOnPowerUp;
+
+            do {
+                newObstacle = {
+                    x: Math.floor(Math.random() * GRID_SIZE),
+                    y: Math.floor(Math.random() * GRID_SIZE),
+                    type: Math.floor(Math.random() * OBSTACLE_TYPES.length)
+                };
+
+                isOnSnake = snake.some(
+                    segment => segment.x === newObstacle.x && segment.y === newObstacle.y
+                );
+                
+                isOnFood = newObstacle.x === food.x && newObstacle.y === food.y;
+                
+                isOnPowerUp = powerUp && newObstacle.x === powerUp.x && newObstacle.y === powerUp.y;
+            } while (isOnSnake || isOnFood || isOnPowerUp);
+
+            obstacles.push(newObstacle);
+        }
+
+        // Activate power-up
+        function activatePowerUp(type) {
+            const powerUp = POWER_UPS[type];
+            
+            // Clear existing timer for this effect
+            if (effectTimers[powerUp.effect]) {
+                clearTimeout(effectTimers[powerUp.effect]);
+            }
+            
+            // Activate the effect
+            activeEffects[powerUp.effect] = true;
+            
+            // Show effect text
+            showFloatingText(snake[0].x, snake[0].y, powerUp.effect.toUpperCase(), '#2196F3');
+            
+            // Set timer to deactivate the effect
+            effectTimers[powerUp.effect] = setTimeout(() => {
+                activeEffects[powerUp.effect] = false;
+            }, powerUp.duration);
         }
 
         // Initialize the game
