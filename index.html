@@ -1236,36 +1236,7 @@
 
         // Reset game
         function resetGame() {
-            cleanupBoard();
-            snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
-            direction = 'RIGHT';
-            score = 0;
-            GAME_SPEED = 200;
-            speedLevel = 1;
-            colorIndex = 1;
-            powerUps = [];
-            activeEffects = {
-                speed: false,
-                shield: false,
-                multiplier: false,
-                ghost: false
-            };
-            effectTimers = {};
-            scoreElement.textContent = score;
-            levelIndicator.textContent = `Level: ${speedLevel}`;
-            isGameOver = false;
-            isPaused = false;
-            pauseButton.textContent = 'Pause';
-            resetButton.textContent = 'Reset';
-            gameOverElement.style.display = 'none';
-            testResults.style.display = 'none';
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            document.querySelector('.timer').style.display = 'none';
-            // Always start the game loop
-            clearInterval(gameLoop);
+            clearGameCache();
             startGameLoop();
             generateFood();
         }
@@ -1670,10 +1641,78 @@
             }, duration);
         }
 
-        // Add cleanup function
+        // Add cache clearing function
+        function clearGameCache() {
+            // Clear all game elements
+            cleanupBoard();
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, gameBoard.width, gameBoard.height);
+            
+            // Clear any existing intervals
+            if (gameLoop) {
+                clearInterval(gameLoop);
+            }
+            
+            // Clear all effect timers
+            Object.keys(effectTimers).forEach(key => {
+                clearTimeout(effectTimers[key]);
+            });
+            
+            // Clear any floating text or event comments
+            document.querySelectorAll('.floating-text, .event-comment').forEach(el => el.remove());
+            
+            // Reset all game state variables
+            snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
+            direction = 'RIGHT';
+            score = 0;
+            GAME_SPEED = 200;
+            speedLevel = 1;
+            colorIndex = 1;
+            powerUps = [];
+            activeEffects = {
+                speed: false,
+                shield: false,
+                multiplier: false,
+                ghost: false
+            };
+            effectTimers = {};
+            isGameOver = false;
+            isPaused = false;
+            
+            // Update UI elements
+            scoreElement.textContent = score;
+            levelIndicator.textContent = `Level: ${speedLevel}`;
+            pauseButton.textContent = 'Pause';
+            resetButton.textContent = 'Reset';
+            gameOverElement.style.display = 'none';
+            testResults.style.display = 'none';
+            
+            // Clear speed indicator
+            document.querySelector('.speed-fill').style.width = '20%';
+            
+            // Force browser to clear cache for game assets
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+        }
+
+        // Enhanced cleanup function
         function cleanupBoard() {
-            // Remove all temporary elements
-            document.querySelectorAll('.snake-segment, .snake-head, .floating-text, .event-comment, .food, .power-up, .obstacle').forEach(el => el.remove());
+            // Remove all game elements
+            document.querySelectorAll('.snake-segment, .snake-head, .floating-text, .event-comment, .food, .power-up, .obstacle, .active-effects').forEach(el => el.remove());
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, gameBoard.width, gameBoard.height);
+            
+            // Clear any existing intervals
+            if (gameLoop) {
+                clearInterval(gameLoop);
+            }
         }
 
         // Initialize the game
@@ -1774,6 +1813,70 @@
             document.querySelector('.timer').textContent = 
                 `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
+
+        // Add automated testing function
+        function runAutomatedTests() {
+            console.log('Running automated tests...');
+            let testsPassed = 0;
+            let totalTests = 0;
+
+            // Test cache clearing
+            function testCacheClearing() {
+                totalTests++;
+                clearGameCache();
+                const isCleared = 
+                    snake.length === 1 &&
+                    score === 0 &&
+                    obstacles.length === 0 &&
+                    powerUps.length === 0 &&
+                    Object.values(activeEffects).every(effect => effect === false);
+                
+                if (isCleared) testsPassed++;
+                console.log(`Cache clearing test: ${isCleared ? 'PASSED' : 'FAILED'}`);
+            }
+
+            // Test game reset
+            function testGameReset() {
+                totalTests++;
+                resetGame();
+                const isReset = 
+                    snake.length === 1 &&
+                    score === 0 &&
+                    !isGameOver &&
+                    !isPaused &&
+                    GAME_SPEED === 200;
+                
+                if (isReset) testsPassed++;
+                console.log(`Game reset test: ${isReset ? 'PASSED' : 'FAILED'}`);
+            }
+
+            // Test screen clearing
+            function testScreenClearing() {
+                totalTests++;
+                cleanupBoard();
+                const isCleared = 
+                    document.querySelectorAll('.snake-segment, .snake-head, .food, .power-up, .obstacle').length === 0;
+                
+                if (isCleared) testsPassed++;
+                console.log(`Screen clearing test: ${isCleared ? 'PASSED' : 'FAILED'}`);
+            }
+
+            // Run all tests
+            testCacheClearing();
+            testGameReset();
+            testScreenClearing();
+
+            // Log results
+            console.log(`\nTest Results: ${testsPassed}/${totalTests} tests passed`);
+            return testsPassed === totalTests;
+        }
+
+        // Add test button click handler
+        testButton.addEventListener('click', () => {
+            const allTestsPassed = runAutomatedTests();
+            showEventComment(allTestsPassed ? 'All Tests Passed!' : 'Some Tests Failed!', 
+                           allTestsPassed ? '#4CAF50' : '#F44336');
+        });
     </script>
     
     <script src="test.js"></script>
