@@ -471,6 +471,43 @@
         .obstacle-hit {
             animation: obstacle-hit 0.3s ease-out forwards;
         }
+
+        .snake-trail {
+            position: absolute;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 8px;
+            z-index: 0;
+            animation: fade-trail 1s ease-out forwards;
+        }
+
+        @keyframes fade-trail {
+            0% { opacity: 0.5; }
+            100% { opacity: 0; }
+        }
+
+        .combo-indicator {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #FF9800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .combo-indicator.active {
+            opacity: 1;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.2); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -523,6 +560,8 @@
         </div>
     </div>
     
+    <div class="combo-indicator">Combo x1</div>
+    
     <script>
         // Game constants
         const GRID_SIZE = 20;
@@ -566,6 +605,9 @@
             double: false
         };
         let effectTimers = {};
+        let comboCount = 0;
+        let lastFoodTime = 0;
+        const COMBO_TIMEOUT = 2000; // 2 seconds to maintain combo
 
         // DOM elements
         const gameBoard = document.getElementById('game-board');
@@ -881,14 +923,37 @@
 
             // Check if snake ate food
             if (head.x === food.x && head.y === food.y) {
-                // Increase score based on food type and active effects
+                // Check for combo
+                const currentTime = Date.now();
+                if (currentTime - lastFoodTime < COMBO_TIMEOUT) {
+                    comboCount++;
+                    const comboElement = document.querySelector('.combo-indicator');
+                    comboElement.textContent = `Combo x${comboCount}`;
+                    comboElement.classList.add('active');
+                    setTimeout(() => comboElement.classList.remove('active'), 1000);
+                } else {
+                    comboCount = 1;
+                }
+                lastFoodTime = currentTime;
+
+                // Increase score based on food type, active effects, and combo
                 let points = FOOD_TYPES[food.type].points;
                 if (activeEffects.double) {
                     points *= 2;
                 }
+                points *= comboCount; // Multiply by combo count
                 score += points;
                 scoreElement.textContent = score;
                 
+                // Show floating text with points and combo
+                showFloatingText(head.x, head.y, `+${points}${comboCount > 1 ? ` (x${comboCount})` : ''}`);
+                
+                // Add trail effect
+                const trail = document.createElement('div');
+                trail.className = 'snake-trail';
+                trail.style.width = `${CELL_SIZE}px`;
+                trail.style.height = `${CELL_SIZE}px`;
+                trail.style.left = `${head.x * CELL_SIZE}px`;
                 // Show floating text with points
                 showFloatingText(head.x, head.y, `+${points}`);
                 
