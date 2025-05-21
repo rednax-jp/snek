@@ -825,7 +825,7 @@
                     moveSnake();
                     drawGame();
                 }
-            }, GAME_SPEED);
+            }, Math.max(50, GAME_SPEED)); // Ensure minimum speed of 50ms
         }
 
         // Draw the game
