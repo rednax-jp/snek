@@ -331,24 +331,78 @@
 
         /* Power-up styles */
         .power-up {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
             position: absolute;
-            z-index: 1;
-            transition: transform 0.2s;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
+            animation: float 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            z-index: 2;
         }
-        .power-up:hover {
-            transform: scale(1.1);
-        }
+
         .power-up-speed {
-            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081555.png');
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            animation: pulse 1s ease-in-out infinite;
         }
+
         .power-up-shield {
-            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081554.png');
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            animation: rotate 3s linear infinite;
         }
-        .power-up-double {
-            background-image: url('https://cdn-icons-png.flaticon.com/512/3081/3081553.png');
+
+        .power-up-multiplier {
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
+            animation: glow 1.5s ease-in-out infinite;
+        }
+
+        .power-up-ghost {
+            background: linear-gradient(45deg, #a18cd1, #fbc2eb);
+            animation: fade 2s ease-in-out infinite;
+        }
+
+        .power-up-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 3;
+        }
+
+        .power-up-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .power-up-icon.active {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+        }
+
+        @keyframes fade {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         /* Obstacle styles */
@@ -562,6 +616,8 @@
     
     <div class="combo-indicator">Combo x1</div>
     
+    <div class="power-up-indicator"></div>
+    
     <script>
         // Game constants
         const GRID_SIZE = 20;
@@ -576,11 +632,18 @@
             { class: 'food-strawberry', points: 4 },
             { class: 'food-grape', points: 5 }
         ];
-        const POWER_UPS = [
-            { class: 'power-up-speed', effect: 'speed', duration: 5000 },
-            { class: 'power-up-shield', effect: 'shield', duration: 8000 },
-            { class: 'power-up-double', effect: 'double', duration: 10000 }
-        ];
+        const POWER_UP_TYPES = {
+            SPEED: 'speed',
+            SHIELD: 'shield',
+            MULTIPLIER: 'multiplier',
+            GHOST: 'ghost'
+        };
+        const POWER_UP_DURATION = {
+            [POWER_UP_TYPES.SPEED]: 5000,
+            [POWER_UP_TYPES.SHIELD]: 8000,
+            [POWER_UP_TYPES.MULTIPLIER]: 10000,
+            [POWER_UP_TYPES.GHOST]: 6000
+        };
         const OBSTACLE_TYPES = [
             { class: 'obstacle-rock', damage: 1 },
             { class: 'obstacle-spike', damage: 2 }
@@ -589,8 +652,14 @@
         // Game state
         let snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
         let food = { x: 5, y: 5, type: 0 };
-        let powerUp = null;
-        let obstacles = [];
+        let powerUps = [];
+        let activeEffects = {
+            speed: false,
+            shield: false,
+            multiplier: false,
+            ghost: false
+        };
+        let effectTimers = {};
         let direction = 'RIGHT';
         let isGameOver = false;
         let score = 0;
@@ -599,12 +668,6 @@
         let gameLoop;
         let colorIndex = 1;
         let speedLevel = 1;
-        let activeEffects = {
-            speed: false,
-            shield: false,
-            double: false
-        };
-        let effectTimers = {};
         let comboCount = 0;
         let lastFoodTime = 0;
         const COMBO_TIMEOUT = 2000; // 2 seconds to maintain combo
@@ -758,17 +821,14 @@
                 gameBoard.parentElement.appendChild(obstacleElement);
             });
 
-            // Draw power-up if exists
-            if (powerUp) {
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
                 const powerUpElement = document.createElement('div');
-                powerUpElement.className = `power-up ${POWER_UPS[powerUp.type].class}`;
-                powerUpElement.style.width = `${CELL_SIZE}px`;
-                powerUpElement.style.height = `${CELL_SIZE}px`;
+                powerUpElement.className = `power-up power-up-${powerUp.type}`;
                 powerUpElement.style.left = `${powerUp.x * CELL_SIZE}px`;
                 powerUpElement.style.top = `${powerUp.y * CELL_SIZE}px`;
-                
                 gameBoard.parentElement.appendChild(powerUpElement);
-            }
+            });
 
             // Draw food
             const foodX = food.x * CELL_SIZE;
@@ -819,11 +879,18 @@
                 effectsContainer.appendChild(shieldEffect);
             }
 
-            if (activeEffects.double) {
-                const doubleEffect = document.createElement('div');
-                doubleEffect.className = 'effect-icon double';
-                doubleEffect.title = 'Double Points';
-                effectsContainer.appendChild(doubleEffect);
+            if (activeEffects.multiplier) {
+                const multiplierEffect = document.createElement('div');
+                multiplierEffect.className = 'effect-icon multiplier';
+                multiplierEffect.title = 'Multiplier Active';
+                effectsContainer.appendChild(multiplierEffect);
+            }
+
+            if (activeEffects.ghost) {
+                const ghostEffect = document.createElement('div');
+                ghostEffect.className = 'effect-icon ghost';
+                ghostEffect.title = 'Ghost Active';
+                effectsContainer.appendChild(ghostEffect);
             }
 
             // Remove existing effects container
@@ -938,7 +1005,7 @@
 
                 // Increase score based on food type, active effects, and combo
                 let points = FOOD_TYPES[food.type].points;
-                if (activeEffects.double) {
+                if (activeEffects.multiplier) {
                     points *= 2;
                 }
                 points *= comboCount; // Multiply by combo count
@@ -947,15 +1014,6 @@
                 
                 // Show floating text with points and combo
                 showFloatingText(head.x, head.y, `+${points}${comboCount > 1 ? ` (x${comboCount})` : ''}`);
-                
-                // Add trail effect
-                const trail = document.createElement('div');
-                trail.className = 'snake-trail';
-                trail.style.width = `${CELL_SIZE}px`;
-                trail.style.height = `${CELL_SIZE}px`;
-                trail.style.left = `${head.x * CELL_SIZE}px`;
-                // Show floating text with points
-                showFloatingText(head.x, head.y, `+${points}`);
                 
                 // Check if we need to increase speed
                 if (score % SPEED_INCREASE_INTERVAL === 0) {
@@ -991,9 +1049,26 @@
             }
 
             // Check if snake ate power-up
-            if (powerUp && head.x === powerUp.x && head.y === powerUp.y) {
-                activatePowerUp(powerUp.type);
-                powerUp = null;
+            checkPowerUpCollision();
+
+            // Check for game over
+            if (!activeEffects[POWER_UP_TYPES.GHOST]) {
+                if (snake[0].x < 0 || snake[0].x >= GRID_SIZE || 
+                    snake[0].y < 0 || snake[0].y >= GRID_SIZE) {
+                    if (!activeEffects[POWER_UP_TYPES.SHIELD]) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+
+            if (!activeEffects[POWER_UP_TYPES.SHIELD]) {
+                for (let i = 1; i < snake.length; i++) {
+                    if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) {
+                        gameOver();
+                        return;
+                    }
+                }
             }
         }
 
@@ -1093,12 +1168,12 @@
             GAME_SPEED = 200;
             speedLevel = 1;
             colorIndex = 1;
-            powerUp = null;
-            obstacles = [];
+            powerUps = [];
             activeEffects = {
                 speed: false,
                 shield: false,
-                double: false
+                multiplier: false,
+                ghost: false
             };
             effectTimers = {};
             scoreElement.textContent = score;
@@ -1319,16 +1394,16 @@
         }
         
         function testPowerUpActivation() {
-            let testActiveEffects = { speed: false, shield: false, double: false };
+            let testActiveEffects = { speed: false, shield: false, multiplier: false, ghost: false };
             let testTimers = {};
             // Simulate activating each power-up
-            POWER_UPS.forEach((pu, idx) => {
-                testActiveEffects[pu.effect] = true;
-                testTimers[pu.effect] = setTimeout(() => {
-                    testActiveEffects[pu.effect] = false;
-                }, pu.duration);
+            POWER_UP_TYPES.forEach((type, idx) => {
+                testActiveEffects[type] = true;
+                testTimers[type] = setTimeout(() => {
+                    testActiveEffects[type] = false;
+                }, POWER_UP_DURATION[type]);
             });
-            addTestResult('Power-up activation', testActiveEffects.speed && testActiveEffects.shield && testActiveEffects.double);
+            addTestResult('Power-up activation', testActiveEffects.speed && testActiveEffects.shield && testActiveEffects.multiplier && testActiveEffects.ghost);
         }
         function testObstacleDamage() {
             let testScore = 10;
@@ -1428,7 +1503,7 @@
                 newPowerUp = {
                     x: Math.floor(Math.random() * GRID_SIZE),
                     y: Math.floor(Math.random() * GRID_SIZE),
-                    type: Math.floor(Math.random() * POWER_UPS.length)
+                    type: Math.floor(Math.random() * POWER_UP_TYPES.length)
                 };
 
                 isOnSnake = snake.some(
@@ -1442,7 +1517,7 @@
                 );
             } while (isOnSnake || isOnFood || isOnObstacle);
 
-            powerUp = newPowerUp;
+            powerUps.push(newPowerUp);
         }
 
         // Generate obstacle
@@ -1465,42 +1540,36 @@
                 
                 isOnFood = newObstacle.x === food.x && newObstacle.y === food.y;
                 
-                isOnPowerUp = powerUp && newObstacle.x === powerUp.x && newObstacle.y === powerUp.y;
+                isOnPowerUp = powerUps.some(
+                    powerUp => powerUp.x === newObstacle.x && powerUp.y === newObstacle.y
+                );
             } while (isOnSnake || isOnFood || isOnPowerUp);
 
             obstacles.push(newObstacle);
         }
 
         // Activate power-up
-        function activatePowerUp(type) {
-            const powerUp = POWER_UPS[type];
+        function applyPowerUp(type) {
+            activeEffects[type] = true;
+            updatePowerUpIndicator();
             
-            // Clear existing timer for this effect
-            if (effectTimers[powerUp.effect]) {
-                clearTimeout(effectTimers[powerUp.effect]);
+            if (effectTimers[type]) {
+                clearTimeout(effectTimers[type]);
             }
-            
-            // Activate the effect
-            activeEffects[powerUp.effect] = true;
-            
-            // Show effect text
-            showFloatingText(snake[0].x, snake[0].y, powerUp.effect.toUpperCase(), '#2196F3');
-            
-            // Set timer to deactivate the effect
-            effectTimers[powerUp.effect] = setTimeout(() => {
-                activeEffects[powerUp.effect] = false;
-            }, powerUp.duration);
 
-            // Show event comments for each effect
-            switch (powerUp.effect) {
-                case 'speed':
-                    showEventComment('Speed Boost!', '#2196F3');
+            effectTimers[type] = setTimeout(() => {
+                activeEffects[type] = false;
+                updatePowerUpIndicator();
+            }, POWER_UP_DURATION[type]);
+
+            switch(type) {
+                case POWER_UP_TYPES.SPEED:
+                    GAME_SPEED = Math.max(50, GAME_SPEED - 30);
+                    speedLevel++;
+                    levelIndicator.textContent = `Level: ${speedLevel}`;
                     break;
-                case 'shield':
-                    showEventComment('Shield On!', '#4CAF50');
-                    break;
-                case 'double':
-                    showEventComment('Double Points!', '#FF9800');
+                case POWER_UP_TYPES.MULTIPLIER:
+                    scoreMultiplier = 2;
                     break;
             }
         }
@@ -1526,6 +1595,29 @@
         // Initialize the game
         init();
         drawGame();
+
+        function updatePowerUpIndicator() {
+            const indicator = document.querySelector('.power-up-indicator');
+            indicator.innerHTML = '';
+            
+            Object.entries(activeEffects).forEach(([type, active]) => {
+                if (active) {
+                    const icon = document.createElement('div');
+                    icon.className = `power-up-icon power-up-${type} active`;
+                    indicator.appendChild(icon);
+                }
+            });
+        }
+
+        function checkPowerUpCollision() {
+            powerUps = powerUps.filter(powerUp => {
+                if (snake[0].x === powerUp.x && snake[0].y === powerUp.y) {
+                    applyPowerUp(POWER_UP_TYPES[powerUp.type]);
+                    return false;
+                }
+                return true;
+            });
+        }
     </script>
     
     <script src="test.js"></script>
