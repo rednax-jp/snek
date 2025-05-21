@@ -1,8 +1,26 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const PORT = 3000;
+
+// Get local IP address
+function getLocalIpAddress() {
+    const interfaces = os.networkInterfaces();
+    for (const devName in interfaces) {
+        const iface = interfaces[devName];
+        for (let i = 0; i < iface.length; i++) {
+            const alias = iface[i];
+            if (alias.family === 'IPv4' && !alias.internal) {
+                return alias.address;
+            }
+        }
+    }
+    return '127.0.0.1';
+}
+
+const LOCAL_IP = getLocalIpAddress();
 
 const server = http.createServer((req, res) => {
     let filePath = '.' + req.url;
@@ -40,7 +58,8 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${PORT}/`);
+    console.log(`Access from other devices using: http://${LOCAL_IP}:${PORT}/`);
     console.log('Press Ctrl+C to stop the server');
 }); 

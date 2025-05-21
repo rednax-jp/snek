@@ -2,7 +2,7 @@
   "name": "Snek Game",
   "short_name": "Snek",
   "description": "A modern version of the classic Snake game for mobile devices",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f0f0f0",
@@ -11,6 +11,11 @@
     {
       "src": "src/assets/favicon.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "src/assets/icon.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]

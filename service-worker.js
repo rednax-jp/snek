@@ -1,12 +1,13 @@
 const CACHE_NAME = 'snek-game-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/src/assets/icon.png',
-  '/src/assets/favicon.png',
-  '/src/assets/adaptive-icon.png',
-  '/src/assets/splash.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './src/assets/icon.png',
+  './src/assets/favicon.png',
+  './src/assets/adaptive-icon.png',
+  './src/assets/splash.png',
+  './test.js'
 ];
 
 // Install event - cache assets
@@ -50,6 +51,14 @@ self.addEventListener('fetch', event => {
               });
             
             return response;
+          })
+          .catch(() => {
+            // If the fetch fails (offline), try to return a cached page
+            if (event.request.url.indexOf('.html') > -1 || 
+                event.request.url.endsWith('/')) {
+              return caches.match('./index.html');
+            }
+            return new Response('Offline and resource not cached');
           });
       })
   );
