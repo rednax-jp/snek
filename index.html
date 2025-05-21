@@ -46,21 +46,40 @@
             border: 0.5px solid rgba(0,0,0,0.1);
             background-color: rgba(255,255,255,0.1);
         }
-        .snake-body {
+        .snake-segment {
             position: absolute;
-            background-color: #4CAF50;
             border-radius: 8px;
             z-index: 1;
-            transition: background-color 0.3s;
+            transition: all 0.1s ease-out;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .snake-head {
             position: absolute;
-            background-color: #388E3C;
             border-radius: 8px;
             z-index: 2;
-            transition: background-color 0.3s;
+            transition: all 0.1s ease-out;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .snake-head::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            top: 25%;
+            left: 25%;
+            box-shadow: 8px 0 0 #fff;
+        }
+        .snake-segment::before {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            top: 25%;
+            left: 25%;
         }
         .food {
             position: absolute;
@@ -408,6 +427,36 @@
             0% { background-position: 0 0; }
             100% { background-position: 400px 400px; }
         }
+
+        #speed-indicator {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.9);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            color: #2E7D32;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .speed-bar {
+            width: 100px;
+            height: 6px;
+            background: #E8F5E9;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .speed-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease-out;
+        }
     </style>
 </head>
 <body>
@@ -452,6 +501,13 @@
     </div>
     
     <div id="test-results"></div>
+    
+    <div id="speed-indicator">
+        <span>Speed:</span>
+        <div class="speed-bar">
+            <div class="speed-fill" style="width: 20%"></div>
+        </div>
+    </div>
     
     <script>
         // Game constants
@@ -586,6 +642,9 @@
             // Clear the canvas
             ctx.clearRect(0, 0, gameBoard.width, gameBoard.height);
 
+            // Remove all existing snake segments and effects
+            document.querySelectorAll('.snake-segment, .snake-head, .floating-text, .event-comment').forEach(el => el.remove());
+
             // Draw grid
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
@@ -595,6 +654,39 @@
                     ctx.strokeRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                 }
             }
+
+            // Draw snake with segments
+            snake.forEach((segment, index) => {
+                const segmentElement = document.createElement('div');
+                segmentElement.className = index === 0 ? 'snake-head' : 'snake-segment';
+                segmentElement.style.width = `${CELL_SIZE}px`;
+                segmentElement.style.height = `${CELL_SIZE}px`;
+                segmentElement.style.left = `${segment.x * CELL_SIZE}px`;
+                segmentElement.style.top = `${segment.y * CELL_SIZE}px`;
+                segmentElement.style.backgroundColor = index === 0 ? 
+                    getSnakeHeadColor(colorIndex) : 
+                    getSnakeBodyColor(colorIndex);
+
+                // Add direction-based rotation for head
+                if (index === 0) {
+                    let rotation = 0;
+                    switch (direction) {
+                        case 'UP': rotation = -90; break;
+                        case 'RIGHT': rotation = 0; break;
+                        case 'DOWN': rotation = 90; break;
+                        case 'LEFT': rotation = 180; break;
+                    }
+                    segmentElement.style.transform = `rotate(${rotation}deg)`;
+                }
+
+                gameBoard.parentElement.appendChild(segmentElement);
+            });
+
+            // Update speed indicator
+            const maxSpeed = 200;
+            const minSpeed = 50;
+            const speedPercentage = ((maxSpeed - GAME_SPEED) / (maxSpeed - minSpeed)) * 100;
+            document.querySelector('.speed-fill').style.width = `${speedPercentage}%`;
 
             // Draw obstacles
             obstacles.forEach(obstacle => {
@@ -640,36 +732,6 @@
             
             // Add the new food element
             gameBoard.parentElement.appendChild(foodElement);
-
-            // Draw snake with current color scheme
-            snake.forEach((segment, index) => {
-                // Apply the current color scheme based on colorIndex
-                ctx.fillStyle = index === 0 ? 
-                    getSnakeHeadColor(colorIndex) : 
-                    getSnakeBodyColor(colorIndex);
-                    
-                ctx.fillRect(
-                    segment.x * CELL_SIZE + 1,
-                    segment.y * CELL_SIZE + 1,
-                    CELL_SIZE - 2,
-                    CELL_SIZE - 2
-                );
-
-                // Draw shield effect if active
-                if (activeEffects.shield && index === 0) {
-                    ctx.strokeStyle = '#2196F3';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(
-                        segment.x * CELL_SIZE + CELL_SIZE / 2,
-                        segment.y * CELL_SIZE + CELL_SIZE / 2,
-                        CELL_SIZE / 2 + 2,
-                        0,
-                        2 * Math.PI
-                    );
-                    ctx.stroke();
-                }
-            });
 
             // Draw active effects
             drawActiveEffects();
@@ -931,6 +993,7 @@
 
         // Reset game
         function resetGame() {
+            cleanupBoard();
             snake = [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }];
             direction = 'RIGHT';
             score = 0;
@@ -963,6 +1026,7 @@
 
         // Game over
         function gameOver() {
+            cleanupBoard();
             isGameOver = true;
             finalScoreElement.textContent = `Final Score: ${score}`;
             gameOverElement.style.display = 'flex';
@@ -1237,20 +1301,21 @@
 
         // Function to increase game speed
         function increaseSpeed() {
-            // Don't increase past a certain threshold
             if (GAME_SPEED > 50) {
                 GAME_SPEED -= 5;
                 speedLevel++;
                 levelIndicator.textContent = `Level: ${speedLevel}`;
                 
-                // Restart the game loop with new speed
+                // Update speed indicator
+                const maxSpeed = 200;
+                const minSpeed = 50;
+                const speedPercentage = ((maxSpeed - GAME_SPEED) / (maxSpeed - minSpeed)) * 100;
+                document.querySelector('.speed-fill').style.width = `${speedPercentage}%`;
+                
                 clearInterval(gameLoop);
                 startGameLoop();
                 
-                // Apply blinking effect to the game board
                 gameBoard.classList.add('blink');
-                
-                // Remove the blink class after animation completes
                 setTimeout(() => {
                     gameBoard.classList.remove('blink');
                 }, 1000);
@@ -1360,6 +1425,12 @@
             setTimeout(() => {
                 comment.remove();
             }, duration);
+        }
+
+        // Add cleanup function
+        function cleanupBoard() {
+            // Remove all temporary elements
+            document.querySelectorAll('.snake-segment, .snake-head, .floating-text, .event-comment, .food, .power-up, .obstacle').forEach(el => el.remove());
         }
 
         // Initialize the game
